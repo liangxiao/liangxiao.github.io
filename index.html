@@ -239,6 +239,180 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/28/2020-03-28/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="PersistentMan">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="菜鸟老兵">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2020/03/28/2020-03-28/" itemprop="url">ALBERT阅读笔记</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-03-28T23:19:10+08:00">
+                2020-03-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2020/03/28/2020-03-28/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2020/03/28/2020-03-28/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+             <span id="/2020/03/28/2020-03-28/" class="leancloud_visitors" data-flag-title="ALBERT阅读笔记">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">阅读次数&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>论文题目：ALBERT: A LITE BERT FOR SELF-SUPERVISED LEARNING OF LANGUAGE REPRESENTATIONS<br>论文出处：ICLR2020 <a href="https://arxiv.org/abs/1909.11942" target="_blank" rel="noopener">https://arxiv.org/abs/1909.11942</a></p>
+<p>预训练语言模型规模越大，往往下游任务表现越好。由于GPU/TPU显存的限制，模型大小的增长会更加困难，并消耗更长的训练时间。为了解决这些问题，论文提出了两个参数减小的技巧，减小内存开销，并提高了BERT的训练速度。同时，使用一个self-supervised loss建模句子间的连贯性（coherence）。最终，模型在GLUE、RACE和SQuAD上达到了SOTA结果，并且比BERT-large有更少参数。</p>
+<p>具体来看，ALBERT的两个参数减小技巧：（1）嵌入参数矩阵分解，将大规模的词嵌入矩阵分解为两个小矩阵，使得隐层大小增长不会显著增加词嵌入参数大小；（2）跨层参数共享，使得参数大小不会随网络深度增长。ALBERT类似BERT-large的配置，参数小18倍，训练速度快1.7倍。减小参数的技巧也可以看作一种正则，有助于generalization。</p>
+<p>此外，为了提高性能，ALBERT引入一个self-supervised loss做句子顺序预测（SOP），关注句子间的连贯性，解决BERT的NSP效果差的问题。</p>
+<h2 id="模型架构"><a href="#模型架构" class="headerlink" title="模型架构"></a>模型架构</h2><p>ALBERT的架构和BERT类似</p>
+<h3 id="Factorized-embedding-parameterization"><a href="#Factorized-embedding-parameterization" class="headerlink" title="Factorized embedding parameterization"></a>Factorized embedding parameterization</h3><p>论文中提到，在XLNet和RoBERTa中，WordPiece embedding size $E$ 和hidden layer size $H$相等。但WordPiece embedding size $E$学习上下文无关表示，hidden-layer embeddings学习上下文依赖表示。词汇大小为$V$。</p>
+<p>ALBERT分解嵌入参数，不把one-hot向量映射到大小为$H$的隐空间，而是先映射到更低维的大小为$E$的隐空间，然后再映射到原大小为$H$的隐空间。分解后，嵌入参数的数量从$O(V \times H)$减小到$O(V \times E + E \times H)$，这里$H \gg E$。</p>
+<h3 id="Cross-layer-parameter-sharing"><a href="#Cross-layer-parameter-sharing" class="headerlink" title="Cross-layer parameter sharing"></a>Cross-layer parameter sharing</h3><p>ALBERT默认共享层间所有参数，包括feed-foward network(FFN)参数和attention参数。</p>
+<p><img src="/images/15843494865247/15844179339581.jpg" alt=""></p>
+<p>ALBERT层到层的变化相比BERT更加平滑，能够稳定网络参数，距离指标比BERT要低，但也不会收敛到0。</p>
+<h3 id="Inter-sentence-coherence-loss"><a href="#Inter-sentence-coherence-loss" class="headerlink" title="Inter-sentence coherence loss"></a>Inter-sentence coherence loss</h3><p>BERT用next-sentence prediction(NSP)，NSP是binary classification loss来预测两个片段(segment)是否连续出现在原文中。正例是从训练语料中取连续片段，负例是取不同文档的两个片段，正负例采样比例大致相同。</p>
+<p>作者认为NSP无效的原因是相比于MLM，它的学习难度比较低。NSP合并话题预测和连贯性预测到一个任务里，但话题预测更容易学习，也和MLM学习有重叠。</p>
+<p>因此，ALBERT仍然考虑句子间的建模，但主要关注连贯性。ALBERT用sentence-order prediction(SOP) loss, 避免话题预测，更关注句间连贯性。SOP的正例和BERT类似，负例是同样的两个连续片段，但交换顺序。经作者验证，NSP解决不了SOP任务（学习了更容易话题，在SOP任务上大概是完全随机的水平），但SOP能够在合理水平上解决NSP任务。</p>
+<h2 id="模型设置"><a href="#模型设置" class="headerlink" title="模型设置"></a>模型设置</h2><p>从下图可以看到，ALBERT在参数空间的改进是非常显著的。<br><img src="/images/15843494865247/15843778848279.jpg" alt=""></p>
+<h2 id="实验结果"><a href="#实验结果" class="headerlink" title="实验结果"></a>实验结果</h2><h3 id="OVERALL-COMPARISON-BETWEEN-BERT-AND-ALBERT"><a href="#OVERALL-COMPARISON-BETWEEN-BERT-AND-ALBERT" class="headerlink" title="OVERALL COMPARISON BETWEEN BERT AND ALBERT"></a>OVERALL COMPARISON BETWEEN BERT AND ALBERT</h3><p>ALBERT-xxlarge只有BERT-large的70%参数量，但在下游任务结果上明显超过BERT-large。在训练的数据迭代速度上，以BERT-large作为基准，ALBERT-large大概快1.7倍，而ALBERT-xxlarge大约要慢3倍。<br><img src="/images/15843494865247/15844223990033.jpg" alt=""></p>
+<h3 id="FACTORIZED-EMBEDDING-PARAMETERIZATION"><a href="#FACTORIZED-EMBEDDING-PARAMETERIZATION" class="headerlink" title="FACTORIZED EMBEDDING PARAMETERIZATION"></a>FACTORIZED EMBEDDING PARAMETERIZATION</h3><p>参数不共享时，嵌入空间$E$越大，结果表现越好，但提高不多。参数共享时，$E=128$似乎结果最好，没必要进一步提升嵌入空间大小。<br><img src="/images/15843494865247/15844238876972.jpg" alt=""></p>
+<h3 id="CROSS-LAYER-PARAMETER-SHARING"><a href="#CROSS-LAYER-PARAMETER-SHARING" class="headerlink" title="CROSS-LAYER PARAMETER SHARING"></a>CROSS-LAYER PARAMETER SHARING</h3><p>参数共享的策略会损害模型性能，主要性能的损失来自于FFN-layer参数的共享，attention层的共享似乎影响不大（$E=128$时，略增，$E=768$时，略减。）<br><img src="/images/15843494865247/15844240740020.jpg" alt=""><br>作者也尝试把模型各层分成多个组，每个组的层之间共享参数，结果表明每组层数越少，也就是组数越多，模型效果越好。</p>
+<h3 id="SENTENCE-ORDER-PREDICTION-SOP"><a href="#SENTENCE-ORDER-PREDICTION-SOP" class="headerlink" title="SENTENCE ORDER PREDICTION (SOP)"></a>SENTENCE ORDER PREDICTION (SOP)</h3><p><img src="/images/15843494865247/15844247857338.jpg" alt=""></p>
+<p>NSP没有给SOP任务带来什么提升，相反，SOP能够解决NSP相对较好。SOP能够给下游多句编码任务性能带来提升。</p>
+<h3 id="WHAT-IF-WE-TRAIN-FOR-THE-SAME-AMOUNT-OF-TIME"><a href="#WHAT-IF-WE-TRAIN-FOR-THE-SAME-AMOUNT-OF-TIME" class="headerlink" title="WHAT IF WE TRAIN FOR THE SAME AMOUNT OF TIME?"></a>WHAT IF WE TRAIN FOR THE SAME AMOUNT OF TIME?</h3><p><img src="/images/15843494865247/15844264045973.jpg" alt=""></p>
+<p>尽管BERT-large的data-throughput是ALBERT-xxlarge的3.17倍，但如果训练相同时间的话，ALBERT-xxlarge的结果明显更好。（说明由于大量参数共享，ALBERT模型迭代收敛速度更快？）</p>
+<h3 id="ADDITIONAL-TRAINING-DATA-AND-DROPOUT-EFFECTS"><a href="#ADDITIONAL-TRAINING-DATA-AND-DROPOUT-EFFECTS" class="headerlink" title="ADDITIONAL TRAINING DATA AND DROPOUT EFFECTS"></a>ADDITIONAL TRAINING DATA AND DROPOUT EFFECTS</h3><p>增加额外训练语料，除了SQuAD数据集，其他下游任务都有提升。主要因为SQuAD是基于wiki的文章，可能域外训练语料会有副作用。</p>
+<p><img src="/images/15843494865247/15844277636584.jpg" alt=""></p>
+<p>从实验结果看，移除dropout有助于提升下游任务效果。作者提出dropout可能会损害大规模的transformer-based模型的性能。<br><img src="/images/15843494865247/15844288105993.jpg" alt=""></p>
+<h3 id="CURRENT-STATE-OF-THE-ART-ON-NLU-TASKS"><a href="#CURRENT-STATE-OF-THE-ART-ON-NLU-TASKS" class="headerlink" title="CURRENT STATE-OF-THE-ART ON NLU TASKS"></a>CURRENT STATE-OF-THE-ART ON NLU TASKS</h3><p><img src="/images/15843494865247/15844308385930.jpg" alt=""></p>
+<p><img src="/images/15843494865247/15844309195006.jpg" alt=""></p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>ALBERT-xxlarge比BERT-large有更少的参数，能够获得更好的结果，但由于结构更大，计算开销也更大。后续考虑加速ALBERT的训练和推理速度，可以利用sparse attention和block attention。另外，考虑额外的表示能力，包括example mining和更有效的language modeling training。最后，SOP导致更好的语言表示，值得探索更多维度的表示能力。</p>
+<h2 id="总结和想法"><a href="#总结和想法" class="headerlink" title="总结和想法"></a>总结和想法</h2><ol>
+<li>ALBERT确实很大压缩了模型大小，主要通过词嵌入矩阵分解和层间参数共享，这两个参数压缩了模型大小，但可能会对模型性能造成一定程度下降。</li>
+<li>ALBERT的模型性能提升主要是用SOP任务代替了NSP，使得句间关系的学习起来更加困难，增加了模型新的表示能力。</li>
+<li>从ALBERT的共享参数实验分析来看，似乎各层分别attention参数学习效果不明显，可以共享attention的结果，反而FFN的参数伤害较大。</li>
+<li>ALBERT的角度看，dropout是有害的，我的猜测会不会有一部分原因是ALBERT的参数压缩策略代替了一部分模型正则化的需求，使得dropout会有反作用？</li>
+<li>尽管ALBERT压缩了模型参数大小，可能减少了模型存储空间。但网络结构仍然很大，训练和推断开销并没有减少很多，并且只有在xxlarge时，才体现出SOTA水平。但公开的不同配置预训练模型导致我们有更多的工程选择，能够性能和效率间妥协。</li>
+</ol>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/01/02/2020-01-02/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -687,7 +861,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -700,7 +874,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
