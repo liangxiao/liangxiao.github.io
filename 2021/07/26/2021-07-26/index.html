@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Simhash,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="近期项目有涉及长文本重复或抄袭检测的内容，通过调研一些资料，发现使用Simhash算法的思路还是较为普遍的。但具体到Simhash的资料，可能本身并不复杂，很难看到原创第一手资料，一些中文博客似乎也是互相借鉴，看完总是觉得缺了点什么，因此尝试从自己学习理解的角度记录一下。 概述 Simhash属于局部敏感哈希（Locality Sensitive Hashing, LSH）算法的一种，是将相似项映">
+<meta name="keywords" content="Simhash">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Simhash算法及实践">
+<meta property="og:url" content="http://yoursite.com/2021/07/26/2021-07-26/index.html">
+<meta property="og:site_name" content="菜鸟老兵">
+<meta property="og:description" content="近期项目有涉及长文本重复或抄袭检测的内容，通过调研一些资料，发现使用Simhash算法的思路还是较为普遍的。但具体到Simhash的资料，可能本身并不复杂，很难看到原创第一手资料，一些中文博客似乎也是互相借鉴，看完总是觉得缺了点什么，因此尝试从自己学习理解的角度记录一下。 概述 Simhash属于局部敏感哈希（Locality Sensitive Hashing, LSH）算法的一种，是将相似项映">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/simhash_(1">
+<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/Untitled.png">
+<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/Untitled%201.png">
+<meta property="og:updated_time" content="2021-07-26T15:11:20.058Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Simhash算法及实践">
+<meta name="twitter:description" content="近期项目有涉及长文本重复或抄袭检测的内容，通过调研一些资料，发现使用Simhash算法的思路还是较为普遍的。但具体到Simhash的资料，可能本身并不复杂，很难看到原创第一手资料，一些中文博客似乎也是互相借鉴，看完总是觉得缺了点什么，因此尝试从自己学习理解的角度记录一下。 概述 Simhash属于局部敏感哈希（Locality Sensitive Hashing, LSH）算法的一种，是将相似项映">
+<meta name="twitter:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/simhash_(1">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2021/07/26/2021-07-26/">
+
+
+
+
+
+  <title>Simhash算法及实践 | 菜鸟老兵</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">菜鸟老兵</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/07/26/2021-07-26/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="PersistentMan">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="菜鸟老兵">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Simhash算法及实践</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-07-26T22:55:26+08:00">
+                2021-07-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2021/07/26/2021-07-26/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2021/07/26/2021-07-26/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+             <span id="/2021/07/26/2021-07-26/" class="leancloud_visitors" data-flag-title="Simhash算法及实践">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">阅读次数&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>近期项目有涉及长文本重复或抄袭检测的内容，通过调研一些资料，发现使用Simhash算法的思路还是较为普遍的。但具体到Simhash的资料，可能本身并不复杂，很难看到原创第一手资料，一些中文博客似乎也是互相借鉴，看完总是觉得缺了点什么，因此尝试从自己学习理解的角度记录一下。</p>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><hr>
+<p>Simhash属于局部敏感哈希（Locality Sensitive Hashing, LSH）算法的一种，是将相似项映射为相似的哈希值（这里<strong>相似</strong>是指哈希值间的汉明距离较近）。</p>
+<blockquote>
+<p>在信息论中，两个等长字符串之间的<strong>汉明距离</strong>（英语：Hamming distance）是两个字符串对应位置的不同字符的个数。换句话说，它就是将一个字符串变换成另外一个字符串所需要替换的字符个数。<a href="">[1]</a></p>
+</blockquote>
+<p>Simhash算法是Charikar<a href="">[2]</a>于2002年提出的，而2007年Google成功地将Simhash应用到重复网页的检测，并提出一种从文档集中快速检索相近文档的方法<a href="">[3]</a>。此外，Google的实验经验表明，针对80亿（8B）web页面规模，当设置64位的Simhash编码长度时，汉明距离为3以内的文档基本是相似的。</p>
+<p>Simhash算法的主要思想是降维，将高维的特征向量映射成低维的特征向量，通过两个向量的汉明距离来确定文章是否重复或者高度近似。比较惭愧的是，Simhash的原始论文<a href="">[2]</a>偏计算机理论，实在读不下去，相比而言，Google论文的描述更为浅显简洁<a href="">[3]</a>。一位网友关于两者的评论较为到位，但原始出处链接无效了，引述如下：</p>
+<blockquote>
+<p>事实上www07中的算法是stoc02中随机超平面的一个极其巧妙的实现，bit差异的期望正好等于原始向量的余弦。</p>
+</blockquote>
+<p>从实践来看，当文本内容较长时，使用SimHash准确率很高，但SimHash处理短文本内容准确率往往不能得到保证。</p>
+<h2 id="算法细节"><a href="#算法细节" class="headerlink" title="算法细节"></a>算法细节</h2><hr>
+<p>假设文档可表示为一个特征向量，采用的特征列表为${f_1,f_2,\cdots,f_n}$，分别对应权重值为${w_1,w_2,\cdots,w_n}$。如下图所示，Simhash的具体计算过程如下：</p>
+<ol>
+<li>通过哈希函数$H(\cdot)$将各维特征$f_i$映射为长度为$m$的完全不同的哈希值$h_i$，其中$m$也是最终Simhash生成的二进制签名的长度。</li>
+<li>将各特征的哈希值$h_i$通过函数$C(\cdot)$展开为$m$维向量$c_i$，方法比较直观，将哈希值$h_i$的二进制位逐位填充到向量中，同时将对应的0值变为-1。</li>
+<li>将各特征对应的向量$c_i$与权重值$w_i$相乘，并将各特征结果逐列相加。</li>
+<li>针对求和得到的各向量元素，若值大于0，则对应编码1，否则对应编码0，逐位拼接后最终转化为二进制编码。</li>
+</ol>
+<p><img src="simhash/simhash_(1" alt="simhash/simhash_(1).png">.png)</p>
+<pre><code>Simhash算法细节图
+</code></pre><p>尽管能够利用Simhash算法生成文本的二进制签名，但从海量文本中搜索特定文档或文档集的相似文档时，计算代价仍然是非常巨大的。例如，64位长度签名，查找与特定文档汉明距离为3的文档，需要搜索$C_{64}^3=41664$次。Google论文中提出了一个高效的搜索策略，大大减少了查找开销，这里简单描述一下。</p>
+<ol>
+<li>将文档集合中每个文档的64位签名（二进制编码）按照每16位切分为4个部分。</li>
+<li>为每部分不同的16位编码建立倒排索引，能够根据不同部分的16位编码快速找到相关文档。</li>
+<li>当搜索特定文档时，将该文档编码按16位切分，针对每个部分的16位编码查找索引，逐一比对编码距离是否在3以内。</li>
+</ol>
+<p>这里的一个技巧是若两个文档编码距离在3以内，他们至少有一个部分的16位编码是完全相同的，这个比较好理解。尽管存储的空间可能变为原来4倍，但大大减小了搜索比较范围。</p>
+<h2 id="代码分析"><a href="#代码分析" class="headerlink" title="代码分析"></a>代码分析</h2><hr>
+<p>纸上得来终觉浅，还是看代码细细体会。看了几个实现的样例代码，有python和C++的，如下：</p>
+<p><a href="https://github.com/1e0ng/simhash" target="_blank" rel="noopener">1e0ng/simhash</a></p>
+<p><a href="https://github.com/memosstilvi/simhash" target="_blank" rel="noopener">memosstilvi/simhash</a></p>
+<p><a href="https://zhuanlan.zhihu.com/p/32078737" target="_blank" rel="noopener">SimHash算法</a></p>
+<p>第一个链接是star较多的一个Python库，第三个链接是一个C++的实现，对理解算法细节是非常有帮助的。下面结合第一个链接的代码片段，描述一下算法实现过程：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_hashfunc</span><span class="params">(x)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> hashlib.md5(x).digest()</span><br></pre></td></tr></table></figure>
+<p>上面是对特征token计算hash值，使用的md5算法，但这里有些不严谨的地方，md5的计算结果是128位，实际simhash位数如果取64位的话，需要截断，不确定是否会出现特征哈希值重复的情况。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">build_by_features</span><span class="params">(self, features)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    `features` might be a list of unweighted tokens (a weight of 1</span></span><br><span class="line"><span class="string">               will be assumed), a list of (token, weight) tuples or</span></span><br><span class="line"><span class="string">               a token -&gt; weight dict.</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    sums = []</span><br><span class="line">    batch = []</span><br><span class="line">    count = <span class="number">0</span></span><br><span class="line">    w = <span class="number">1</span></span><br><span class="line">    truncate_mask = <span class="number">2</span> ** self.f - <span class="number">1</span></span><br><span class="line">    <span class="keyword">if</span> isinstance(features, dict):</span><br><span class="line">        features = features.items()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> f <span class="keyword">in</span> features:</span><br><span class="line">        skip_batch = <span class="keyword">False</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> isinstance(f, basestring):</span><br><span class="line">            f, w = f</span><br><span class="line">            skip_batch = w &gt; self.large_weight_cutoff <span class="keyword">or</span> <span class="keyword">not</span> isinstance(w, int)</span><br><span class="line"></span><br><span class="line">        count += w</span><br><span class="line">        <span class="keyword">if</span> self.hashfunc_returns_int:</span><br><span class="line">            h = int_to_bytes(self.hashfunc(f.encode(<span class="string">'utf-8'</span>)) &amp; truncate_mask, self.f_bytes)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            h = self.hashfunc(f.encode(<span class="string">'utf-8'</span>))[-self.f_bytes:]</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> skip_batch:</span><br><span class="line">            sums.append(self._bitarray_from_bytes(h) * w)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            batch.append(h * w)</span><br><span class="line">            <span class="keyword">if</span> len(batch) &gt;= self.batch_size:</span><br><span class="line">                sums.append(self._sum_hashes(batch))</span><br><span class="line">                batch = []</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> len(sums) &gt;= self.batch_size:</span><br><span class="line">            sums = [np.sum(sums, <span class="number">0</span>)]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> batch:</span><br><span class="line">        sums.append(self._sum_hashes(batch))</span><br><span class="line"></span><br><span class="line">    combined_sums = np.sum(sums, <span class="number">0</span>)</span><br><span class="line">    self.value = bytes_to_int(np.packbits(combined_sums &gt; count / <span class="number">2</span>).tobytes())</span><br></pre></td></tr></table></figure>
+<p>这里simhash的输入可以是token列表，也可以是(token, weight)的pair或dict。为防止特征过多，计算过程占用内存较大的情况，设置了<em>batch_size</em>，分批次计算并合并结果。值得注意的是，整个计算过程并没有将特征hash值中的0转化为-1的步骤，而是在代码最后一行使用了一个trick。计算求和的结果<em>combined_sums</em>是对应列hash值为1的特征权重之和，而<em>count</em>是所有特征的权重之和，因此，对应列hash值为0的特征权重之和为两者之差<em>count-combined_sums</em>。按Simhash算法过程，若对应列hash值为1的特征权重和大于对应列hash值为0的特征权重和，则该列对应的Simhash签名为1，否则为0。所以，Simhash签名可以直接通过和<em>count</em>的一半来比较获得。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">distance</span><span class="params">(self, another)</span>:</span></span><br><span class="line">        <span class="keyword">assert</span> self.f == another.f</span><br><span class="line">        x = (self.value ^ another.value) &amp; ((<span class="number">1</span> &lt;&lt; self.f) - <span class="number">1</span>)</span><br><span class="line">        ans = <span class="number">0</span></span><br><span class="line">        <span class="keyword">while</span> x:</span><br><span class="line">            ans += <span class="number">1</span></span><br><span class="line">            x &amp;= x - <span class="number">1</span></span><br><span class="line">        <span class="keyword">return</span> ans</span><br></pre></td></tr></table></figure>
+<p>上面代码块是负责快速计算两个simhash签名的汉明距离。第3行是两个签名按位做异或操作的结果。第6-8行计算异或结果<em>x</em>包含1的个数。</p>
+<p>该库也实现了Google论文对应的构建索引和查询过程，但从实现细节来看，性能并不高，并不适合超大规模文档的检索。笔者实践过程中，直接使用了facebook的faiss<a href="">[4]</a>来存储二进制签名。</p>
+<h2 id="具体实践"><a href="#具体实践" class="headerlink" title="具体实践"></a>具体实践</h2><hr>
+<p>准备工作就这么多，可以开始搞事情了……</p>
+<p>首先，文本预处理工作，这里做法比较粗糙，去html标签→jieba分词→去停用词→大写转小写→全角转半角，获得token列表，作为simhash的特征输入。</p>
+<p>其次，直接使用了1e0ng/simhash的库，为每个文档生成simhash签名，这里签名长度参照Google结果，使用64位。</p>
+<p>最后，利用faiss<a href="">[4]</a>构建二进制索引，将每个文档的simhash值添加到索引中。</p>
+<p>实验输出相似度距离3以内的文档对，抽样的一些case，样例如下：</p>
+<p><img src="simhash/Untitled.png" alt="simhash/Untitled.png"></p>
+<p><img src="simhash/Untitled%201.png" alt="simhash/Untitled%201.png"></p>
+<p>从抽样分析结果看，文本的相似程度很高，及时有一些文本改写，也能够正确识别。这里使用的文本token的频次作为特征权重，但也碰到一些坑需要注意。</p>
+<ol>
+<li><strong>文本中的高频特殊字符一定要剔除完全</strong>。我们实验中碰到其实文本内容不同，但计算结果很像的情况。后来分析发现这些文本都有非常高频的叹号和波浪号之类的字符，这些特殊字符会导致hash编码对应列的权重值极高，使得文本的simhash编码趋同，从而距离较为接近。如果选取tf-idf作为特征权重，也许应该能够解决这个问题，留待后续试验补充。</li>
+<li><strong>短文本结果不太好，计算时需过滤短文本</strong>。文本过短，token特征数量少，simhash计算不充分，不具可比性。此外，短文本也不太容易界定重复或抄袭的标准，因此，在计算时最好提前过滤掉长度较短的文本。</li>
+</ol>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><hr>
+<p>Simhash本质上还是一种高维特征向量降维的方法。从文本角度看，文本可用向量空间模型（Vector Space Model, VSM）表示，通过度量文本向量的余弦值（文本的向量表示可以是词频、tf-idf或分布式表示），可以检测相似或重复文本。Simhash通过将向量表示降维，转化为二进制编码，通过汉明距离度量文本间的相似度。这背后的理论依据是Simhash编码的汉明距离期望等于原始向量间的余弦值。</p>
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><hr>
+<ol>
+<li><a href="https://zh.wikipedia.org/zh-cn/%E6%B1%89%E6%98%8E%E8%B7%9D%E7%A6%BB" target="_blank" rel="noopener">https://zh.wikipedia.org/zh-cn/汉明距离</a></li>
+<li>《Similarity Estimation Techniques from Rounding Algorithms》 STOC 2002</li>
+<li>《Detecting Near-Duplicates for Web Crawling》WWW 2007</li>
+<li><a href="https://github.com/facebookresearch/faiss" target="_blank" rel="noopener">https://github.com/facebookresearch/faiss</a></li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Simhash/" rel="tag"># Simhash</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/03/28/2020-03-28/" rel="next" title="ALBERT阅读笔记">
+                <i class="fa fa-chevron-left"></i> ALBERT阅读笔记
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">PersistentMan</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#概述"><span class="nav-number">1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#算法细节"><span class="nav-number">2.</span> <span class="nav-text">算法细节</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码分析"><span class="nav-number">3.</span> <span class="nav-text">代码分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#具体实践"><span class="nav-number">4.</span> <span class="nav-text">具体实践</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">5.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考文献"><span class="nav-number">6.</span> <span class="nav-text">参考文献</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">PersistentMan</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: '29ymlNgYggnrk5Bhh9OmNMpE-gzGzoHsz',
+        appKey: '8wfaWDIQ9gFvlglV43PI3PpM',
+        placeholder: 'Just go go',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.4.js"></script>
+  <script>AV.initialize("29ymlNgYggnrk5Bhh9OmNMpE-gzGzoHsz", "8wfaWDIQ9gFvlglV43PI3PpM");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
