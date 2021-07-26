@@ -87,14 +87,14 @@
 <meta property="og:site_name" content="菜鸟老兵">
 <meta property="og:description" content="近期项目有涉及长文本重复或抄袭检测的内容，通过调研一些资料，发现使用Simhash算法的思路还是较为普遍的。但具体到Simhash的资料，可能本身并不复杂，很难看到原创第一手资料，一些中文博客似乎也是互相借鉴，看完总是觉得缺了点什么，因此尝试从自己学习理解的角度记录一下。 概述 Simhash属于局部敏感哈希（Locality Sensitive Hashing, LSH）算法的一种，是将相似项映">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/simhash_(1">
-<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/Untitled.png">
-<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/Untitled%201.png">
-<meta property="og:updated_time" content="2021-07-26T15:11:20.058Z">
+<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/images/simhash/simhash_1.png">
+<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/images/simhash/Untitled.png">
+<meta property="og:image" content="http://yoursite.com/2021/07/26/2021-07-26/images/simhash/Untitled%201.png">
+<meta property="og:updated_time" content="2021-07-26T15:15:08.099Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Simhash算法及实践">
 <meta name="twitter:description" content="近期项目有涉及长文本重复或抄袭检测的内容，通过调研一些资料，发现使用Simhash算法的思路还是较为普遍的。但具体到Simhash的资料，可能本身并不复杂，很难看到原创第一手资料，一些中文博客似乎也是互相借鉴，看完总是觉得缺了点什么，因此尝试从自己学习理解的角度记录一下。 概述 Simhash属于局部敏感哈希（Locality Sensitive Hashing, LSH）算法的一种，是将相似项映">
-<meta name="twitter:image" content="http://yoursite.com/2021/07/26/2021-07-26/simhash/simhash_(1">
+<meta name="twitter:image" content="http://yoursite.com/2021/07/26/2021-07-26/images/simhash/simhash_1.png">
 
 
 
@@ -317,6 +317,11 @@
           
 
           
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv"><i class="fa fa-file-o"></i>
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>
+            </span>
+          
 
           
 
@@ -355,9 +360,8 @@
 <li>将各特征对应的向量$c_i$与权重值$w_i$相乘，并将各特征结果逐列相加。</li>
 <li>针对求和得到的各向量元素，若值大于0，则对应编码1，否则对应编码0，逐位拼接后最终转化为二进制编码。</li>
 </ol>
-<p><img src="simhash/simhash_(1" alt="simhash/simhash_(1).png">.png)</p>
-<pre><code>Simhash算法细节图
-</code></pre><p>尽管能够利用Simhash算法生成文本的二进制签名，但从海量文本中搜索特定文档或文档集的相似文档时，计算代价仍然是非常巨大的。例如，64位长度签名，查找与特定文档汉明距离为3的文档，需要搜索$C_{64}^3=41664$次。Google论文中提出了一个高效的搜索策略，大大减少了查找开销，这里简单描述一下。</p>
+<p><img src="images/simhash/simhash_1.png" alt="Simhash算法细节图">                                                                        </p>
+<p>尽管能够利用Simhash算法生成文本的二进制签名，但从海量文本中搜索特定文档或文档集的相似文档时，计算代价仍然是非常巨大的。例如，64位长度签名，查找与特定文档汉明距离为3的文档，需要搜索$C_{64}^3=41664$次。Google论文中提出了一个高效的搜索策略，大大减少了查找开销，这里简单描述一下。</p>
 <ol>
 <li>将文档集合中每个文档的64位签名（二进制编码）按照每16位切分为4个部分。</li>
 <li>为每部分不同的16位编码建立倒排索引，能够根据不同部分的16位编码快速找到相关文档。</li>
@@ -383,8 +387,8 @@
 <p>其次，直接使用了1e0ng/simhash的库，为每个文档生成simhash签名，这里签名长度参照Google结果，使用64位。</p>
 <p>最后，利用faiss<a href="">[4]</a>构建二进制索引，将每个文档的simhash值添加到索引中。</p>
 <p>实验输出相似度距离3以内的文档对，抽样的一些case，样例如下：</p>
-<p><img src="simhash/Untitled.png" alt="simhash/Untitled.png"></p>
-<p><img src="simhash/Untitled%201.png" alt="simhash/Untitled%201.png"></p>
+<p><img src="images/simhash/Untitled.png" alt="images/simhash/Untitled.png"></p>
+<p><img src="images/simhash/Untitled%201.png" alt="images/simhash/Untitled%201.png"></p>
 <p>从抽样分析结果看，文本的相似程度很高，及时有一些文本改写，也能够正确识别。这里使用的文本token的频次作为特征权重，但也碰到一些坑需要注意。</p>
 <ol>
 <li><strong>文本中的高频特殊字符一定要剔除完全</strong>。我们实验中碰到其实文本内容不同，但计算结果很像的情况。后来分析发现这些文本都有非常高频的叹号和波浪号之类的字符，这些特殊字符会导致hash编码对应列的权重值极高，使得文本的simhash编码趋同，从而距离较为接近。如果选取tf-idf作为特征权重，也许应该能够解决这个问题，留待后续试验补充。</li>
@@ -607,6 +611,26 @@
 
 
         
+<div class="busuanzi-count">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      <i class="fa fa-user"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      
+    </span>
+  
+
+  
+    <span class="site-pv">
+      <i class="fa fa-eye"></i>
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      
+    </span>
+  
+</div>
+
 
 
 
